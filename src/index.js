@@ -20,6 +20,7 @@ const OUTPUT_FORMATS = {
 	png: 'image/png',
 	webp: 'image/webp',
 };
+const IGNORE_ICO="favicon.ico";
 
 const multipleImageMode = ['watermark', 'blend'];
 
@@ -27,6 +28,18 @@ const inWhiteList = (env, url) => {
 	const imageUrl = new URL(url);
 	const whiteList = env.WHITE_LIST ? env.WHITE_LIST.split(',') : [];
 	return !(whiteList.length && !whiteList.find((hostname) => imageUrl.hostname.endsWith(hostname)));
+};
+
+const findHost = (request, url, env) => {
+	const protocol = request.url.startsWith('https://') ? 'https' : 'http';
+	const host = url.host;
+	// 构造类似于window.location的URL
+	return `${protocol}://${host}/`;
+};
+
+const ignoreIco = (request, url, env) => {
+	// 构造类似于window.location的URL
+	return request.url.endsWith(IGNORE_ICO);
 };
 
 const processImage = async (env, request, inputImage, pipeAction) => {
@@ -52,31 +65,33 @@ export default {
 	async fetch(request, env, context) {
 		// 读取缓存
 		const cacheUrl = new URL(request.url);
+		const baseUrl = findHost(request, cacheUrl, env);
+		let url = request.url.replace(baseUrl, '');
+
 		const cacheKey = new Request(cacheUrl.toString());
 		const cache = caches.default;
 		const hasCache = await cache.match(cacheKey);
 		if (hasCache) {
-			console.log('cache: true');
 			return hasCache;
 		}
-
+		// todo
+		if (ignoreIco(request, cacheUrl, env)) { url = env.FAVICON_URL};
 		// 入参提取与校验
 		const query = queryString.parse(new URL(request.url).search);
-		const { url = '', action = '', format = 'webp', quality = 99 } = query;
+		const { action = '', format = 'webp', quality = 99 } = query;
+		
 		console.log('params:', url, action, format, quality);
-
 		if (!url) {
 			return new Response(null, {
 				status: 302,
 				headers: {
-					location: 'https://github.com/ccbikai/cloudflare-worker-image',
+					location: env.HOME_URL,
 				},
 			});
 		}
 
 		// 白名单检查
 		if (!inWhiteList(env, url)) {
-			console.log('whitelist: false');
 			return new Response(null, {
 				status: 403,
 			});
@@ -87,12 +102,10 @@ export default {
 		if (!imageRes.ok) {
 			return imageRes;
 		}
-		console.log('fetch image done');
 
 		const imageBytes = new Uint8Array(await imageRes.arrayBuffer());
 		try {
 			const inputImage = photon.PhotonImage.new_from_byteslice(imageBytes);
-			console.log('create inputImage done');
 
 			/** pipe
 			 * `resize!800,400,1|watermark!https%3A%2F%2Fmt.ci%2Flogo.png,10,10,10,10`
@@ -102,7 +115,6 @@ export default {
 				result = await result;
 				return (await processImage(env, request, result, pipeAction)) || result;
 			}, inputImage);
-			console.log('create outputImage done');
 
 			// 图片编码
 			let outputImageData;
@@ -113,7 +125,6 @@ export default {
 			} else {
 				outputImageData = await encodeWebp(outputImage.get_image_data(), { quality });
 			}
-			console.log('create outputImageData done');
 
 			// 返回体构造
 			const imageResponse = new Response(outputImageData, {

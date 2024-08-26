@@ -1,6 +1,6 @@
-name = "image"
+name = "cloudflare-worker-image"
 main = "src/index.js"
-compatibility_date = "2023-11-24"
+compatibility_date = "2024-08-24"
 
 # Variable bindings. These are arbitrary, plaintext strings (similar to environment variables)
 # Note: Use secrets to store sensitive data.
@@ -9,7 +9,9 @@ compatibility_date = "2023-11-24"
 # MY_VARIABLE = "production_value"
 
 [vars]
-WHITE_LIST = "miantiao.me,mt.ci"
+WHITE_LIST = "hiepminio.l2.ttut.cc"
+HOME_URL = "https://github.com/JinRudy"
+FAVICON_URL = "https://a.minifog.org.cn/favicon.ico"
 
 # Bind a KV Namespace. Use KV as persistent storage for small key-value pairs.
 # Docs: https://developers.cloudflare.com/workers/runtime-apis/kv

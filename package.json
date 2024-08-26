@@ -1,6 +1,6 @@
 {
-  "name": "image",
-  "version": "0.0.0",
+  "name": "cloudflare-worker-image",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "deploy": "wrangler deploy",
